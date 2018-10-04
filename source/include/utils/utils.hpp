@@ -12,7 +12,7 @@ namespace ssh {
          * Initializes vector values at indexes in range [start, last) by calling func(index)
          */
         template<typename Vector, typename Function, typename Index = size_t>
-        void init_vector(Vector& vector, Index first, Index last, Function function) {
+        void init_vector(Vector& vector, Index first, Index last, const Function& function) {
             for (Index i = first; i < last; ++i)
                 vector[i] = function(i);
         }
@@ -21,7 +21,7 @@ namespace ssh {
          * Initializes vector values at indexes in range [0, last) by calling func(index)
          */
         template<typename Vector, typename Function, typename Index = size_t>
-        void init_vector(Vector& vector, Index last, Function function) {
+        void init_vector(Vector& vector, Index last, const Function& function) {
             init_vector<Vector, Function, Index>(vector, Index(0), last, function);
         }
 
@@ -29,7 +29,7 @@ namespace ssh {
          * Initializes vector values at indexes in range [0, vector.size()) by calling func(index)
          */
         template<typename Vector, typename Function>
-        void init_vector(Vector& vector, Function function) {
+        void init_vector(Vector& vector, const Function& function) {
             init_vector(vector, vector.size(), function);
         }
 
@@ -48,7 +48,7 @@ namespace ssh {
          */
         template<typename Vector, typename Value = typename Vector::value_type, typename Index = size_t>
         Vector create_mesh_bounds(const Value& a, const Value& b, const Index n) {
-            return create_mesh_step(a, (b - a) / (n - 1), n);
+            return create_mesh_step<Vector>(a, (b - a) / (n - 1), n);
         }
 
     }// namespace utils

@@ -16,16 +16,20 @@ namespace ssh {
         coefficients(const Vector2& a_table, const Vector& b_table, const Vector& c_table)
             : _a_table(a_table), _b_table(b_table), _c_table(c_table) {}
 
-        const Value& get_a(const Index i, const Index j) {
+        const Value& get_a(const Index i, const Index j) const {
             return _a_table[i][j];
         }
 
-        const Value& get_b(const Index i) {
+        const Value& get_b(const Index i) const {
             return _b_table[i];
         }
 
-        const Value get_c(const Index i) {
+        const Value get_c(const Index i) const {
             return _c_table[i];
+        }
+
+        const Index steps() const {
+            return _a_table.size();
         }
 
     private:
