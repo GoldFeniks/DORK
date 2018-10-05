@@ -51,6 +51,11 @@ namespace ssh {
             return create_mesh_step<Vector>(a, (b - a) / (n - 1), n);
         }
 
+        template<typename T, typename I = size_t>
+        T factorial(const I n) {
+            return n <= I(1) ? T(1) : factorial<T>(n - I(1)) * T(n);
+        }
+
     }// namespace utils
 
 }// namespace ssh
