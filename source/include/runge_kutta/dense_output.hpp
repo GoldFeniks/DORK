@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <cmath>
 #include "../utils/types.hpp"
 
 namespace ssh {
@@ -12,9 +13,10 @@ namespace ssh {
         template<typename T, typename Coeffs, typename Vector = types::vector1d_t<T>, size_t N = 0>
         static auto create(const Coeffs& coefficients, const T& h, const T& y0, const Vector& k) {
             const auto functions = coefficients.template generate_functions<N>();
-            return [functions, h, y0, k](const T x) {
+            const auto n = coefficients.height();
+            return [functions, h, y0, k, n](const T x) {
                 auto result = T(0);
-                for (size_t i = 0; i < k.size(); ++i)
+                for (size_t i = 0; i < n; ++i)
                     result += functions[i](x) * k[i];
                 return (N == 0 ? y0 : 0) + h * result;
             };
@@ -23,11 +25,12 @@ namespace ssh {
         template<typename T, typename Coeffs, typename Vector = types::vector1d_t<T>, size_t N = 0>
         static auto create_bound(const Coeffs& coefficients, const T& h, const T& y0, const Vector& k) {
             const auto functions = coefficients.template generate_functions<N>();
-            return [functions, h, &y0, &k](const T x) {
+            const auto n = coefficients.height();
+            return [functions, h, &y0, &k, n](const T x) {
                 auto result = T(0);
-                for (size_t i = 0; i < k.size(); ++i)
+                for (size_t i = 0; i < n; ++i)
                     result += functions[i](x) * k[i];
-                return (N == 0 ? y0 : 0) + h * result;
+                return (N == 0 ? y0 : 0) + h * result * std::pow(2, N);
             };
         }
 
@@ -42,7 +45,7 @@ namespace ssh {
             types::vector1d_t<T> k(coefficients.height());
             auto v = y0;
             Vector result;
-            auto output = dense_output::create_bound(coefficients, h, v, k);
+            auto output = dense_output::create_bound<T, Coeffs, Vector>(coefficients, h, v, k);
             while (rk) {
                 auto v1 = rk(k);
                 for (size_t i = 0; i < n; ++i)
@@ -54,7 +57,5 @@ namespace ssh {
         }
 
     };
-
-
 
 }// namespace ssh
