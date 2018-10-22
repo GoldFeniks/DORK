@@ -3,33 +3,28 @@
 #include "coefficients.hpp"
 #include "../utils/utils.hpp"
 #include <functional>
+#include <tuple>
+#include <type_traits>
 
 namespace ssh {
 
     namespace {
 
-        template<typename Argument, typename Value, typename Parameter, typename Function, size_t N>
-        class caller {
+        template<typename Argument, typename Function, typename Value = Argument, typename... Parameters>
+        struct caller {
 
-        public:
+            Function function;
 
-            caller(const Function function) : _function(function) {}
+            caller(const Function& function) : function(function) {}
 
-            Value operator()(const Argument& arg, const Value& val, const types::array1d_t<Parameter, N>& args) {
-                _argument = arg;
-                _value = val;
-                return std::apply([this](auto&&... args) { return call(std::forward<decltype(args)>(args)...); }, args);
+            Value operator()(const Argument& argument, const Value& value, const std::tuple<Parameters...>& parameters) {
+                return call(function, argument, value, parameters);
             }
 
-        private:
-
-            Argument _argument;
-            Value _value;
-            const Function _function;
-
-            template<typename... Args>
-            Value call(Args... args) const {
-                return _function(_argument, _value, std::forward<Args>(args)...);
+            static Value call(const Function& function, const Argument& argument, const Value& value, const std::tuple<Parameters...>& parameters) {
+                return std::apply([&function, &argument, &value](auto&&... parameters) { 
+                    return function(argument, value, std::forward<decltype(parameters)>(parameters)...);
+                }, parameters);
             }
 
         };
@@ -135,60 +130,86 @@ namespace ssh {
 
     };
 
-    template<typename Value, typename Vector, typename Function, size_t N, typename Coeffs, typename KVector = types::vector1d_t<Value>, typename Parameter = typename Vector::value_type, template<typename> typename PVector = types::vector1d_t>
+    template<
+        typename AVector, typename VVector, typename Function, typename Coeffs, 
+        typename KVector = types::vector2d_t<double>,
+        typename Argument = typename AVector::value_type, 
+        typename Value = typename VVector::value_type,
+        template<typename> typename PVector = types::vector1d_t, 
+        typename KSubVector = typename KVector::value_type,
+        typename... Parameters>
     class lazy_runge_kutta_p {
 
-    public:
+        public:
 
-        lazy_runge_kutta_p(const Vector arguments, const PVector<Value> initial_value,
-                           const Function function,  const PVector<types::array1d_t<Parameter, N>>& params, const Coeffs coefficients) :
-            _arguments(arguments), _params(params), _max_index(arguments.size() - 1), _last_value(initial_value),
-            _caller(_caller_t(function)), _coefficients(coefficients) {}
+            lazy_runge_kutta_p() = delete;
+            ~lazy_runge_kutta_p() = default;
 
-        lazy_runge_kutta_p(const Vector arguments, const Value initial_value, const Function function, 
-                           const PVector<types::array1d_t<Parameter, N>>& params) :
-            lazy_runge_kutta_p(arguments, initial_value, function, Coeffs()) {}
+            lazy_runge_kutta_p(const lazy_runge_kutta_p&) = default;
+            lazy_runge_kutta_p(lazy_runge_kutta_p&&) = default;
 
-        PVector<Value> operator()(PVector<KVector>& k) {
-            if (!*this)
-                return _last_value;
-            const auto arg = _arguments[_arg_index++];
-            const auto d = _arguments[_arg_index] - arg;
-            for (size_t i = 0; i < _params.size(); ++i) {
-                auto result = Value(0);
-                for (size_t j = 0; j < _coefficients.steps(); ++j) {
-                    auto buff = Value(0);
-                    for (size_t m = 0; m < j; ++m)
-                        buff += _coefficients.get_a(j, m) * k[i][m];
-                    result += _coefficients.get_b(j) * (k[i][j] = _caller(arg + d * _coefficients.get_c(j), _last_value[i] + buff * d, _params[i]));
+            lazy_runge_kutta_p(const AVector& arguments, const VVector& initial_value, const Function& function,
+                                const PVector<std::tuple<Parameters...>>& parameters, const Coeffs& coefficients) :
+                _arguments(arguments), _parameters(parameters), _max_index(arguments.size() - 1), _initial_value(initial_value),
+                _last_value(initial_value), _caller(_caller_t(function)), _coefficients(coefficients) {}
+
+            lazy_runge_kutta_p(const AVector& arguments, const VVector& initial_value, const Function& function,
+                                const PVector<std::tuple<Parameters...>>& parameters) :
+                lazy_runge_kutta_p(arguments, initial_value, function, parameters, Coeffs()) {}
+
+            VVector operator()(KVector& k) {
+                if (!*this)
+                    return _last_value;
+                const auto arg = _arguments[_arg_index++];
+                const auto d = _arguments[_arg_index] - arg;
+                for (size_t i = 0; i < _parameters.size(); ++i) {
+                    auto result = Value(0);
+                    for (size_t j = 0; j < _coefficients.steps(); ++j) {
+                        auto buff = Value(0);
+                        for (size_t m = 0; m < j; ++m)
+                            buff += _coefficients.get_a(j, m) * k[i][m];
+                        result += _coefficients.get_b(j) * (
+                            k[i][j] = _caller(arg + d * _coefficients.get_c(j), _last_value[i] + buff * d, _parameters[i]));
+                    }
+                    _last_value[i] += result * d;
                 }
-                _last_value[i] += result * d;
+                return _last_value;
             }
-            return _last_value;
-        }
 
-        PVector<Value> operator()() {
-            static PVector<KVector> k(_params.size(), KVector(_coefficients.steps()));
-            return (*this)(k);
-        }
+            VVector operator()() {
+                static auto k = std::is_constructible_v<KVector, size_t, KSubVector> 
+                                    ? std::is_constructible_v<KSubVector, size_t> 
+                                        ? KVector(_parameters.size(), KSubVector(_coefficients.steps()))
+                                        : KVector(_parameters.size())
+                                    : std::is_constructible_v<KVector, size_t>
+                                        ? KVector(_parameters.size())
+                                        : KVector();
+                return (*this)(k);
+            }
 
-        operator bool() const {
-            return _max_index > _arg_index;
-        }
+            operator bool() const {
+                return _max_index > _arg_index;
+            }
 
-    private:
+            void reset() {
+                _arg_index = 0;
+                _last_value = _initial_value;
+            }
 
-        typedef caller<typename Vector::value_type, Value, Parameter, Function, N> _caller_t;
+        private:
 
-        const Vector _arguments;
-        const PVector<types::array1d_t<Parameter, N>> _params;
-        size_t _arg_index = 0;
-        const size_t _max_index;
-        PVector<Value> _last_value;
-        _caller_t _caller;
-        const Coeffs _coefficients;
+            typedef caller<Argument, Function, Value, Parameters...> _caller_t;
 
-    };  
+            const AVector _arguments;
+            const PVector<std::tuple<Parameters...>> _parameters;
+            size_t _arg_index = 0;
+            const size_t _max_index;
+            const AVector _initial_value;
+            AVector _last_value;
+            _caller_t _caller;
+            const Coeffs _coefficients;
+
+    }; 
 
     template<typename Value, typename Argument, typename Coeffs>
     class runge_kutta {
