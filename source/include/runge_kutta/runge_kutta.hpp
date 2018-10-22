@@ -17,7 +17,7 @@ namespace ssh {
 
             caller(const Function& function) : function(function) {}
 
-            Value operator()(const Argument& argument, const Value& value, const std::tuple<Parameters...>& parameters) {
+            Value operator()(const Argument& argument, const Value& value, const std::tuple<Parameters...>& parameters) const {
                 return call(function, argument, value, parameters);
             }
 
@@ -132,9 +132,9 @@ namespace ssh {
 
     template<
         typename AVector, typename VVector, typename Function, typename Coeffs, 
-        typename KVector = types::vector2d_t<double>,
         typename Argument = typename AVector::value_type, 
         typename Value = typename VVector::value_type,
+        typename KVector = types::vector2d_t<Value>,
         template<typename> typename PVector = types::vector1d_t, 
         typename KSubVector = typename KVector::value_type,
         typename... Parameters>
@@ -206,10 +206,86 @@ namespace ssh {
             const size_t _max_index;
             const AVector _initial_value;
             AVector _last_value;
-            _caller_t _caller;
+            const _caller_t _caller;
             const Coeffs _coefficients;
 
     }; 
+
+    template<
+        typename Argument, typename Function, typename Coeffs, 
+        typename VVector = types::vector1d_t<Argument>, 
+        typename Value = typename VVector::value_type,
+        typename KVector = types::vector2d_t<Value>,
+        template<typename> typename PVector = types::vector1d_t, 
+        typename KSubVector = typename KVector::value_type,
+        typename... Parameters>
+    class lazy_runge_kutta_uniform_p {
+
+        public:
+
+            lazy_runge_kutta_uniform_p(const Argument& a, const Argument& b, const size_t n, 
+                                       const VVector& initial_value, const Function& function, 
+                                       const PVector<std::tuple<Parameters...>>& parameters, const Coeffs& coefficients) :
+                _d((b - a) / Argument(n)), _left_argument(a), _right_argument(b), _last_argument(a), 
+                _initial_value(initial_value), _last_value(initial_value), _parameters(parameters),
+                _caller(_caller_t(function)), _coefficients(coefficients) {}
+
+            lazy_runge_kutta_uniform_p(const Argument& a, const Argument& b, const size_t n, 
+                                       const VVector& initial_value, const Function& function, 
+                                       const PVector<std::tuple<Parameters...>>& parameters) :
+                lazy_runge_kutta_uniform_p(a, b, n, initial_value, function, parameters, Coeffs()) {}
+
+            VVector operator()(KVector& k) {
+                if (!*this)
+                    return _last_value;
+                for (size_t i = 0; i < _parameters.size(); ++i) {
+                    auto result = Value(0);
+                    for (size_t j = 0; j < _coefficients.steps(); ++j) {
+                        auto buff = Value(0);
+                        for (size_t m = 0; m < j; ++m)
+                            buff += _coefficients.get_a(j, m) * k[i][m];
+                        result += _coefficients.get_b(j) * (
+                            k[i][j] = _caller(_last_argument + _d * _coefficients.get_c(j), _last_value[i] + buff * _d, _parameters[i]));
+                    }
+                    _last_value[i] += result * _d;
+                }
+                _last_argument += _d;
+                return _last_value;
+            }
+
+            VVector operator()() {
+                static auto k = std::is_constructible_v<KVector, size_t, KSubVector> 
+                                    ? std::is_constructible_v<KSubVector, size_t> 
+                                        ? KVector(_parameters.size(), KSubVector(_coefficients.steps()))
+                                        : KVector(_parameters.size())
+                                    : std::is_constructible_v<KVector, size_t>
+                                        ? KVector(_parameters.size())
+                                        : KVector();
+                return (*this)(k);
+            }
+
+            operator bool() const {
+                return _last_argument < _right_argument;
+            }
+
+            void reset() {
+                _last_argument = _left_argument;
+                _last_value = _initial_value;
+            }
+
+        private:
+
+            typedef caller<Argument, Function, Value, Parameters...> _caller_t;
+
+            const Argument _d, _left_argument, _right_argument;
+            Argument _last_argument;
+            const VVector _initial_value;
+            VVector _last_value;
+            const PVector<std::tuple<Parameters...>> _parameters;
+            const _caller_t _caller;
+            const Coeffs _coefficients;
+
+    };
 
     template<typename Value, typename Argument, typename Coeffs>
     class runge_kutta {

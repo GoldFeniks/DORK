@@ -16,7 +16,7 @@ int main() {
     std::vector<double> init;
     for (const auto& it : params)
         init.push_back(std::sin(std::get<0>(it)));
-    auto rk = ssh::lazy_runge_kutta_p(args, init, [](double x, double y, double z) { return std::cos(x + z); }, params, ssh::runge_kutta_coefficients<double, 4>());
+    auto rk = ssh::lazy_runge_kutta_uniform_p(0., 10., 101, init, [](double x, double y, double z) { return std::cos(x + z); }, params, ssh::runge_kutta_coefficients<double, 4>());
     std::ofstream out("./source/cmake-build-debug/test.txt");
     for (const auto& it : init)
         out << it << ' ';
