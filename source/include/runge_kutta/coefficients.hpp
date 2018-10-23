@@ -11,6 +11,8 @@ namespace ssh {
 
     public:
 
+        using value_type = Value;
+
         coefficients() = default;
         ~coefficients() = default;
 
