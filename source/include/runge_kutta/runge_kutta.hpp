@@ -380,6 +380,39 @@ namespace ssh {
             }
 
             template<
+                typename Function, 
+                typename Vector = types::vector1d_t<Argument>, 
+                typename RVector = types::vector1d_t<Value>, 
+                typename KVector = types::vector1d_t<Value>>
+            auto solve(const Vector& arguments, const Value& initial_value, const Function& function) const {
+                auto result = utils::constructor<RVector>::construct(
+                    utils::arguments(arguments.size()),
+                    utils::no_arguments()
+                );
+                auto f = create_lazy_bound<Function, Vector, KVector>(arguments, initial_value, function);
+                result[0] = initial_value;
+                for (size_t i = 1; i < arguments.size(); ++i)
+                    result[i] = f();
+                return result;
+            }
+
+            template<
+                typename Function, 
+                typename RVector = types::vector1d_t<Value>, 
+                typename KVector = types::vector1d_t<Value>>
+            auto solve_uniform(const Argument& a, const Argument& b, const size_t n, const Value& initial_value, const Function& function) const {
+                auto result = utils::constructor<RVector>::construct(
+                    utils::arguments(n),
+                    utils::no_arguments()
+                );
+                auto f = create_lazy_uniform_bound<Function, KVector>(a, b, n, initial_value, function);
+                result[0] = initial_value;
+                for (size_t i = 1; i < n; ++i)
+                    result[i] = f();
+                return result;
+            }
+
+            template<
                 typename Function,
                 typename KVector = types::vector2d_t<Value>,
                 typename AVector = types::vector1d_t<Argument>,

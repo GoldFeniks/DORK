@@ -9,25 +9,12 @@
 #include <fstream>
 
 int main() {
-    ssh::types::vector1d_t<std::tuple<double>> params;
-    for (size_t i = 0; i < 11; ++i)
-        params.push_back({ i / 10. * M_PI_2 });
-    std::vector<double> init;
-    for (const auto& it : params)
-        init.push_back(std::sin(std::get<0>(it)));
-    auto rk_method = ssh::runge_kutta(ssh::runge_kutta_coefficients<double, 4>());
-    auto rk = rk_method.create_lazy_uniform_p(0., 10., 101, init, [](double x, double y, double z) { return std::cos(x + z); }, params);
-    std::ofstream out("./test.txt");
-    for (const auto& it : init)
-        out << it << ' ';
-    out << '\n';
-    while (rk) {
-        for (const auto& it : rk()) {
-            out << it << ' ';
-        }
-        out << '\n';
-    }
+    const auto rk_method = ssh::runge_kutta(ssh::runge_kutta_coefficients<double, 4>());
+    const auto res1 = rk_method.solve_uniform(0., 10., 100,  0., [](const double& x, const double& y) { return  std::cos(x); });
+    const auto res2 = rk_method.solve_uniform(0., 10., 100,  1., [](const double& x, const double& y) { return -std::sin(x); });
+    const auto res3 = rk_method.solve_uniform(0., 10., 100,  0., [](const double& x, const double& y) { return -std::cos(x); });
+    const auto res4 = rk_method.solve_uniform(0., 10., 100, -1., [](const double& x, const double& y) { return  std::sin(x); });
+    std::ofstream out("./source/cmake-build-debug/test.txt");
+    for (size_t i = 0; i < 100; ++i)
+        out << res1[i] << ' ' << res2[i] << ' ' << res3[i] << ' ' << res4[i] << '\n';
 }
-
-
-
