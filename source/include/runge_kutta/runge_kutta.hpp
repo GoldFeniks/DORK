@@ -89,6 +89,14 @@ namespace ssh {
                 _arg_index = 0;
             }
 
+            auto size() const {
+                return _arguments.size();
+            }
+
+            auto initial_value() const {
+                return _initial_value;
+            }
+
         private:
 
             std::conditional_t<StoreRef, const Vector&, const Vector> _arguments;
@@ -118,7 +126,7 @@ namespace ssh {
 
             lazy_runge_kutta_uniform(const Argument& a, const Argument& b, const size_t n, const Value& initial_value,
                                      const Function& function, const Coeffs& coefficients) :
-                    _d((b - a) / (n - 1)), _left_argument(a), _right_argument(b), 
+                    _d((b - a) / (n - 1)), _n(n), _left_argument(a), _right_argument(b), 
                     _last_argument(a), _initial_value(initial_value), _last_value(initial_value),
                     _function(function), _coefficients(coefficients) {}
 
@@ -156,9 +164,23 @@ namespace ssh {
                 return _last_argument < _right_argument;
             }
 
+            void reset() {
+                _last_argument = _left_argument;
+                _last_value = _initial_value;
+            }
+
+            auto size() const {
+                return _n;
+            }
+
+            auto initial_value() const {
+                return _initial_value;
+            }
+
         private:
 
             const Argument _d;
+            const size_t _n;
             std::conditional_t<StoreRef, const Argument&, const Argument> _left_argument, _right_argument;
             Argument _last_argument;
             std::conditional_t<StoreRef, const Value&, const Value> _initial_value;
@@ -238,6 +260,14 @@ namespace ssh {
                     _last_value = _initial_value;
                 }
 
+                auto size() const {
+                    return _arguments.size();
+                }
+
+                auto initial_value() const {
+                    return _initial_value;
+                }
+
             private:
 
                 typedef caller<Argument, Function, StoreRef, Value, Parameters...> _caller_t;
@@ -278,7 +308,7 @@ namespace ssh {
                                            const VVector& initial_value, const Function& function, 
                                            const PVector<std::tuple<Parameters...>>& parameters, 
                                            const Coeffs& coefficients) :
-                    _d((b - a) / Argument(n - 1)), _left_argument(a), _right_argument(b), _last_argument(a), 
+                    _d((b - a) / Argument(n - 1)), _n(n), _left_argument(a), _right_argument(b), _last_argument(a), 
                     _initial_value(initial_value), _last_value(initial_value), _parameters(parameters),
                     _caller(_caller_t(function)), _coefficients(coefficients) {}
 
@@ -328,11 +358,20 @@ namespace ssh {
                     _last_value = _initial_value;
                 }
 
+                auto size() const {
+                    return _n;
+                }
+
+                auto initial_value() const {
+                    return _initial_value;
+                }
+
             private:
 
                 typedef caller<Argument, Function, StoreRef, Value, Parameters...> _caller_t;
 
                 const Argument _d;
+                const size_t _n;
                 std::conditional_t<StoreRef, const Argument&, const Argument> _left_argument, _right_argument;
                 Argument _last_argument;
                 std::conditional_t<StoreRef, const VVector&, const VVector> _initial_value;
@@ -385,15 +424,7 @@ namespace ssh {
                 typename RVector = types::vector1d_t<Value>, 
                 typename KVector = types::vector1d_t<Value>>
             auto solve(const Vector& arguments, const Value& initial_value, const Function& function) const {
-                auto result = utils::constructor<RVector>::construct(
-                    utils::arguments(arguments.size()),
-                    utils::no_arguments()
-                );
-                auto f = create_lazy_bound<Function, Vector, KVector>(arguments, initial_value, function);
-                result[0] = initial_value;
-                for (size_t i = 1; i < arguments.size(); ++i)
-                    result[i] = f();
-                return result;
+                return solver<RVector>::solve(create_lazy_bound<Function, Vector, KVector>(arguments, initial_value, function));
             }
 
             template<
@@ -401,15 +432,7 @@ namespace ssh {
                 typename RVector = types::vector1d_t<Value>, 
                 typename KVector = types::vector1d_t<Value>>
             auto solve_uniform(const Argument& a, const Argument& b, const size_t n, const Value& initial_value, const Function& function) const {
-                auto result = utils::constructor<RVector>::construct(
-                    utils::arguments(n),
-                    utils::no_arguments()
-                );
-                auto f = create_lazy_uniform_bound<Function, KVector>(a, b, n, initial_value, function);
-                result[0] = initial_value;
-                for (size_t i = 1; i < n; ++i)
-                    result[i] = f();
-                return result;
+                return solver<RVector>::solve(create_lazy_uniform_bound<Function, KVector>(a, b, n, initial_value, function));
             }
 
             template<
@@ -474,9 +497,69 @@ namespace ssh {
                         (a, b, n, initial_value, function, parameters, _coefficients); 
             }
 
+            template<
+                typename Function,
+                typename RVector = types::vector2d_t<Value>,
+                typename KVector = types::vector2d_t<Value>,
+                typename AVector = types::vector1d_t<Argument>,
+                typename VVector = types::vector1d_t<Value>,
+                template<typename> typename PVector = types::vector1d_t, 
+                typename KSubVector = typename KVector::value_type,
+                typename... Parameters>
+            auto solve_p(const AVector& arguments, const VVector& initial_value, const Function& function,
+                         const PVector<std::tuple<Parameters...>>& parameters) const 
+            {
+                return solver<RVector>::solve(
+                    create_lazy_bound_p<Function, KVector, AVector, VVector, PVector, KSubVector, Parameters...>(
+                        arguments, initial_value, function, parameters
+                    )
+                );
+            }
+
+            template<
+                typename Function,
+                typename RVector = types::vector2d_t<Value>,
+                typename KVector = types::vector2d_t<Value>,
+                typename VVector = types::vector1d_t<Argument>, 
+                template<typename> typename PVector = types::vector1d_t, 
+                typename KSubVector = typename KVector::value_type,
+                typename... Parameters>
+            auto solve_uniform_p(const Argument& a, const Argument& b, const size_t n, const VVector& initial_value,
+                                 const Function& function, const PVector<std::tuple<Parameters...>>& parameters) const 
+            {
+                return solver<RVector>::solve(
+                    create_lazy_uniform_bound_p<Function, KVector, VVector, PVector, KSubVector, Parameters...>(
+                        a, b, n, initial_value, function, parameters
+                    )
+                );
+            }
+
         private:
 
             const Coeffs _coefficients;
+
+
+            template<typename RVector>
+            struct solver {
+
+                template<typename RK>
+                static auto solve(RK&& rk) {
+                    auto result = utils::constructor<RVector>::construct(
+                        utils::arguments(rk.size()),
+                        utils::no_arguments()
+                    );
+                    assign(result[0], rk.initial_value());
+                    for (size_t i = 1; i < rk.size(); ++i)
+                        assign(result[i], rk());
+                    return result;
+                }
+
+            };
+
+            template<typename T1, typename T2>
+            static void assign(T1& to, T2&& from) {
+                utils::assign<T1, T2, utils::move_assigner, utils::copy_assigner, utils::loop_assigner>(to, std::move(from));
+            }
 
     };
 
