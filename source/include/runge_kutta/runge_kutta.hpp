@@ -4,12 +4,19 @@
 #include "../utils/utils.hpp"
 #include <tuple>
 #include <type_traits>
+#include "../utils/constructor.hpp"
+#include "../utils/assigner.hpp"
 
 namespace ssh {
 
     namespace {
 
-        template<typename Argument, typename Function, bool  StoreRef = false, typename Value = Argument, typename... Parameters>
+        template<
+            typename Argument, 
+            typename Function,
+            bool StoreRef = false, 
+            typename Value = Argument, 
+            typename... Parameters>
         struct caller {
 
             std::conditional_t<StoreRef, const Function&, const Function> function;
@@ -33,8 +40,12 @@ namespace ssh {
     namespace implementation {
 
         template<
-            typename Vector, typename Value, typename Function, typename Coeffs,
-            bool StoreRef = false, typename KVector = types::vector1d_t<Value>>
+            typename Vector,
+            typename Value, 
+            typename Function, 
+            typename Coeffs,
+            bool StoreRef = false, 
+            typename KVector = types::vector1d_t<Value>>
         class lazy_runge_kutta {
 
         public:
@@ -110,7 +121,9 @@ namespace ssh {
         };
 
         template<
-            typename Argument, typename Function, typename Coeffs, 
+            typename Argument, 
+            typename Function, 
+            typename Coeffs, 
             bool StoreRef = false,
             typename Value = Argument, 
             typename KVector = types::vector1d_t<Value>>
@@ -191,7 +204,10 @@ namespace ssh {
         };
 
         template<
-            typename AVector, typename VVector, typename Function, typename Coeffs, 
+            typename AVector, 
+            typename VVector, 
+            typename Function, 
+            typename Coeffs, 
             bool StoreRef = false,
             typename Argument = typename AVector::value_type, 
             typename Value = typename VVector::value_type,
@@ -286,7 +302,9 @@ namespace ssh {
         }; 
 
         template<
-            typename Argument, typename Function, typename Coeffs, 
+            typename Argument, 
+            typename Function, 
+            typename Coeffs, 
             bool StoreRef = false,
             typename VVector = types::vector1d_t<Argument>, 
             typename Value = typename VVector::value_type,
