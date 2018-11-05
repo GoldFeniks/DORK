@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <algorithm>
 #include "../utils/types.hpp"
+#include "../utils/constructor.hpp"
 
 namespace ssh {
 
@@ -121,21 +122,28 @@ namespace ssh {
                     return _interpolate_solution<VVector, uniform_function>(rk, interpolate_p_lambda, rk.bounds().first, rk.step());
                 }
 
+                template<typename RK, typename AVector, typename RVector = types::vector1d_t<Value>>
+                auto solve(RK& rk, const AVector& arguments) const {
+                    return _solve<RVector, init_function>(interpolate_solution(rk), arguments.size(), arguments);
+                }
+
                 template<typename RK, typename RVector = types::vector1d_t<Value>>
-                auto solve(RK& rk, const Argument& h, const Value& y0, const size_t n) {
-                    types::vector1d_t<Value> k(_functions.size());
-                    auto v = y0;
-                    RVector result;
-                    auto output = interpolate_bound(h, k, v);
-                    while (rk) {
-                        result.push_back(v);
-                        auto v1 = rk(k);
-                        for (size_t i = 1; i < n; ++i)
-                            result.push_back(output(Argument(1) / Argument(n) * Argument(i)));
-                        v = v1;
-                    }
-                    result.push_back(v);
-                    return result;
+                auto solve_uniform(RK& rk, const size_t n) const {
+                    const auto bounds = rk.bounds();
+                    return _solve<RVector, init_function_uniform>(
+                        interpolate_solution_uniform(rk), n, bounds.first, (bounds.second - bounds.first) / (n - 1));
+                }
+
+                template<typename RK, typename AVector, typename RVector = types::vector1d_t<typename RK::vvector_t>>
+                auto solve_p(RK& rk, const AVector& arguments) const {
+                    return _solve<RVector, init_function>(interpolate_solution_p(rk), arguments.size(), arguments);
+                }
+
+                template<typename RK, typename RVector = types::vector1d_t<typename RK::vvector_t>>
+                auto solve_uniform_p(RK& rk, const size_t n) const {
+                    const auto bounds = rk.bounds();
+                    return _solve<RVector, init_function_uniform>(
+                        interpolate_solution_uniform_p(rk), n, bounds.first, (bounds.second - bounds.first) / (n - 1));
                 }
 
             private:
@@ -167,8 +175,14 @@ namespace ssh {
                             _functions(std::move(functions)), _arguments(arguments) {}
 
                         auto operator()(const Argument& x) const {
-                            const auto index = std::distance(_arguments.begin(), 
-                                std::upper_bound(_arguments.begin(), _arguments.end(), x)) - 1;
+                            size_t index;
+                            if (x <= _arguments.front())
+                                index = 0;
+                            else if (x >= _arguments.back())
+                                index = _arguments.size() - 2;
+                            else
+                                index = std::distance(_arguments.begin(), 
+                                    std::upper_bound(_arguments.begin(), _arguments.end(), x)) - 1;
                             const auto a = _arguments[index];
                             return _functions[index]((x - a) / (_arguments[index + 1] - a));
                         }
@@ -184,7 +198,7 @@ namespace ssh {
 
                 };
 
-                template<typename Fs, typename>
+                template<typename Fs, typename = void>
                 class uniform_function {
 
                     public:
@@ -217,6 +231,42 @@ namespace ssh {
 
                 };
 
+                template<typename F, typename A>
+                class init_function {
+
+                public:
+
+                    init_function(const F& f, const A& arguments) : _f(f), _arguments(arguments) {}
+
+                    auto operator()(const size_t i) const {
+                        return _f(_arguments[i]);
+                    }
+
+                private:
+
+                    const F _f;
+                    const A& _arguments;
+
+                };
+
+                template<typename F, typename = void>
+                class init_function_uniform {
+
+                public:
+
+                    init_function_uniform(const F& f, const Argument& a, const Argument& d) : _f(f), _a(a), _d(d) {}
+
+                    auto operator()(const size_t i) const {
+                        return _f(_a + i * _d);
+                    }
+
+                private:
+
+                    const F _f;
+                    const Argument _a, _d;
+
+                };
+
                 template<typename RK, typename V, typename Interpolate>
                 auto generate_interpolating_functions(RK& rk, const Interpolate& function) const {
                     auto k = rk.construct_kvector();
@@ -233,6 +283,16 @@ namespace ssh {
                 template<typename V, template<typename, typename> typename F, typename RK, typename IF, typename... Args>
                 auto _interpolate_solution(RK& rk, const IF& function, const Args&... args) const {
                     return F(generate_interpolating_functions<RK, V>(rk, function), args...);
+                }
+
+                template<typename RVector, template<typename, typename> typename IF, typename F, typename... Args>
+                auto _solve(const F& f, const size_t n, const Args&... args) const {
+                    auto result = utils::constructor<RVector>::construct(
+                        utils::arguments(n),
+                        utils::no_arguments()
+                    );
+                    utils::init_vector(result, IF(f, args...));
+                    return result;
                 }
 
         };

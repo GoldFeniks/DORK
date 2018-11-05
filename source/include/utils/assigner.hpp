@@ -2,6 +2,7 @@
 
 #include <type_traits>
 #include <experimental/type_traits>
+#include "constructor.hpp"
 
 namespace ssh {
 
@@ -95,6 +96,11 @@ namespace ssh {
         template<typename T1, typename T2, template<typename, typename> typename... Assigners>
         inline void assign(T1& to, T2&& from) {
             choose_assigner_t<T1, T2, Assigners...>::assign(to, std::move(from));
+        }
+
+        template<typename T1, typename T2>
+        void default_assign(T1& to, T2&& from) {
+            utils::assign<T1, T2, utils::move_assigner, utils::copy_assigner, utils::loop_assigner>(to, std::move(from));
         }
 
     }// namespace utils

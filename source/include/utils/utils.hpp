@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <tuple>
 #include "types.hpp"
+#include "assigner.hpp"
 
 namespace ssh {
 
@@ -17,7 +18,7 @@ namespace ssh {
         template<typename Vector, typename Function, typename Index = size_t>
         void init_vector(Vector& vector, Index first, Index last, const Function& function) {
             for (Index i = first; i < last; ++i)
-                vector[i] = function(i);
+                default_assign(vector[i], function(i));
         }
 
         /**

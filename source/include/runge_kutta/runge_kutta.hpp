@@ -675,18 +675,13 @@ namespace ssh {
                         utils::arguments(rk.size()),
                         utils::no_arguments()
                     );
-                    assign(result[0], rk.initial_value());
+                    utils::default_assign(result[0], rk.initial_value());
                     for (size_t i = 1; i < rk.size(); ++i)
-                        assign(result[i], rk());
+                        utils::default_assign(result[i], rk());
                     return result;
                 }
 
             };
-
-            template<typename T1, typename T2>
-            static void assign(T1& to, T2&& from) {
-                utils::assign<T1, T2, utils::move_assigner, utils::copy_assigner, utils::loop_assigner>(to, std::move(from));
-            }
 
     };
 
