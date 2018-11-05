@@ -26,23 +26,15 @@ namespace ssh {
             using arguments_tuple_t = std::tuple<Types...>;
 
             const arguments_tuple_t arguments_tuple;
-            
-            arguments() = default;
-            arguments(const Types&... values) : arguments_tuple(std::tuple(values...)) {}
+
+            arguments(const Types&... values) : arguments_tuple(std::tuple<Types...>(values...)) {}
             arguments(const arguments&) = default;
             arguments(arguments&&) = default;
             ~arguments() = default;
 
         };
 
-        struct no_arguments {
-
-            using arguments_tuple_t = std::tuple<>;
-            
-            const arguments_tuple_t arguments_tuple;
-
-        };
-
+        using no_arguments = arguments<>;
 
         namespace {
 
@@ -72,8 +64,8 @@ namespace ssh {
         template<typename T, size_t N, typename Arguments>
         struct choose_constructor<T, N, Arguments> {
             
-            using type = std::enable_if_t<is_constructible_from_arguments_v<T, Arguments>, 
-                                          constructor_implementation<T, N>>;
+            using type = std::conditional_t<is_constructible_from_arguments_v<T, Arguments>, 
+                                          constructor_implementation<T, N>, void>;
 
         };
 

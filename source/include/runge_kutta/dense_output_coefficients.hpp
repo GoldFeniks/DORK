@@ -6,10 +6,14 @@
 
 namespace ssh {
 
-    template<typename Vector2, typename T>
+    template<typename Vector2, typename T, typename V = T>
     class dense_output_coefficients {
 
     public:
+
+        using functions_t = types::vector1d_t<std::function<V(const T&)>>;
+        using argument_t = T;
+        using value_t = V;
 
         dense_output_coefficients() = default;
         ~dense_output_coefficients() = default;
@@ -19,7 +23,7 @@ namespace ssh {
 
         template<size_t N = 0>
         auto generate_functions() const {
-            types::vector1d_t<std::function<T(const T&)>> result;
+            functions_t result;
             types::vector1d_t<T> coeffs(width(), T(0));
             for (size_t i = N == 0 ? 1 : N; i <= width(); ++i) {
                 coeffs[i - 1] = utils::factorial<T>(i) / utils::factorial<T>(i - N);
@@ -30,7 +34,7 @@ namespace ssh {
                     it[i] *= coeffs[i];
             for (const auto& it : coefficients) {
                 result.push_back([it](const T& value) {
-                    auto result = T(0);
+                    auto result = V(0);
                     auto v = N == 0 ? value : T(1);
                     for (size_t i = N == 0 ? 0 : N - 1; i < it.size(); ++i) {
                         result += it[i] * v;

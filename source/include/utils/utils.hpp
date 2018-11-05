@@ -5,6 +5,7 @@
 #include <vector>
 #include <type_traits>
 #include <tuple>
+#include "types.hpp"
 
 namespace ssh {
 
@@ -38,7 +39,7 @@ namespace ssh {
         /**
          * Creates Vector { a, a + d, a + 2 * d, ... , a + (n - 1) * d }
          */
-        template<typename Vector, typename Value = typename Vector::value_type, typename Index = size_t>
+        template<typename Value, typename Vector = types::vector1d_t<Value>, typename Index = size_t>
         Vector create_mesh_step(const Value& a, const Value& d, const Index n) {
             Vector result(n);
             init_vector(result, [a,d](Index i) { return a + i * d; });
@@ -48,7 +49,7 @@ namespace ssh {
         /**
          * Creates Vector { a, a + d, a + 2 * d, ... , a + (n - 1) * d }, where d = (b - a) / (n - 1)
          */
-        template<typename Vector, typename Value = typename Vector::value_type, typename Index = size_t>
+        template<typename Value, typename Vector = types::vector1d_t<Value>, typename Index = size_t>
         Vector create_mesh_bounds(const Value& a, const Value& b, const Index n) {
             return create_mesh_step<Vector>(a, (b - a) / (n - 1), n);
         }

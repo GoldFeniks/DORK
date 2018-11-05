@@ -1,10 +1,11 @@
 #pragma once
 
-#include "coefficients.hpp"
-#include "../utils/utils.hpp"
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include "../utils/constructor.hpp"
+#include "coefficients.hpp"
+#include "../utils/utils.hpp"
 #include "../utils/assigner.hpp"
 
 namespace ssh {
@@ -50,6 +51,12 @@ namespace ssh {
 
         public:
 
+            using value_t = Value;
+            using function_t = Function;
+            using coefficients_t = Coeffs;
+            using kvector_t = KVector;
+            using arguments_t = Vector;
+
             lazy_runge_kutta() = delete;
             ~lazy_runge_kutta() = default;
 
@@ -84,10 +91,7 @@ namespace ssh {
             }
 
             Value operator()() {
-                static auto k = utils::constructor<KVector>::construct(
-                    utils::arguments(_coefficients.steps()),
-                    utils::no_arguments()
-                );
+                static auto k = construct_kvector();
                 return (*this)(k);
             }
 
@@ -101,11 +105,34 @@ namespace ssh {
             }
 
             auto size() const {
-                return _arguments.size();
+                return _max_index;
             }
 
             auto initial_value() const {
                 return _initial_value;
+            }
+
+            auto bounds() const {
+                return std::make_pair(_arguments[0], _arguments[_max_index]);
+            }
+
+            const Vector& arguments() const {
+                return _arguments;
+            }
+
+            auto step(size_t i = 0) const {
+                return _arguments[i + 1] - _arguments[i];
+            }
+
+            auto steps() const {
+                return _coefficients.steps();
+            }
+
+            auto construct_kvector() const {
+                return utils::constructor<KVector>::construct(
+                    utils::arguments(_coefficients.steps()),
+                    utils::no_arguments()
+                );
             }
 
         private:
@@ -130,6 +157,12 @@ namespace ssh {
         class lazy_runge_kutta_uniform {
 
         public:
+
+            using value_t = Value;
+            using function_t = Function;
+            using coefficients_t = Coeffs;
+            using kvector_t = KVector;
+            using arguments_t = types::vector1d_t<Argument>;
 
             lazy_runge_kutta_uniform() = delete;
             ~lazy_runge_kutta_uniform() = default;
@@ -166,10 +199,7 @@ namespace ssh {
             }
 
             Value operator()() {
-                static auto k = utils::constructor<KVector>::construct(
-                    utils::arguments(_coefficients.steps()),
-                    utils::no_arguments()
-                );
+                static auto k = construct_kvector();
                 return (*this)(k);
             }
 
@@ -182,12 +212,35 @@ namespace ssh {
                 _last_value = _initial_value;
             }
 
-            auto size() const {
-                return _n;
+            auto size() const {using arguments_t = types::vector1d_t<Argument>;
+                return _n - 1;
             }
 
             auto initial_value() const {
                 return _initial_value;
+            }
+
+            auto bounds() const {
+                return std::make_pair(_left_argument, _right_argument);
+            }
+
+            auto arguments() const {
+                return utils::create_mesh_step<types::vector1d_t<Argument>>(_left_argument, _right_argument, _n);
+            }
+
+            auto step(size_t i = 0) const {
+                return _d;
+            }
+
+            auto steps() const {
+                return _coefficients.steps();
+            }
+
+            auto construct_kvector() const {
+                return utils::constructor<KVector>::construct(
+                    utils::arguments(_coefficients.steps()),
+                    utils::no_arguments()
+                );
             }
 
         private:
@@ -218,6 +271,13 @@ namespace ssh {
         class lazy_runge_kutta_p {
 
             public:
+
+                using value_t = Value;
+                using function_t = Function;
+                using coefficients_t = Coeffs;
+                using kvector_t = KVector;
+                using arguments_t = AVector;
+                using vvector_t = VVector;
 
                 lazy_runge_kutta_p() = delete;
                 ~lazy_runge_kutta_p() = default;
@@ -257,13 +317,7 @@ namespace ssh {
                 }
 
                 VVector operator()() {
-                    static auto k = utils::constructor<KVector>::construct(
-                        utils::arguments(_parameters.size(), 
-                                        utils::constructor<KSubVector>::construct(
-                                            utils::arguments(_coefficients.steps()), 
-                                            utils::no_arguments())),
-                        utils::arguments(_parameters.size()),
-                        utils::no_arguments());
+                    static auto k = construct_kvector();
                     return (*this)(k);
                 }
 
@@ -277,11 +331,38 @@ namespace ssh {
                 }
 
                 auto size() const {
-                    return _arguments.size();
+                    return _max_index;
                 }
 
                 auto initial_value() const {
                     return _initial_value;
+                }
+
+                auto bounds() const {
+                    return std::make_pair(_arguments[0], _arguments[_max_index]);
+                }
+
+                const AVector& arguments() const {
+                    return _arguments;
+                }
+
+                auto step(size_t i = 0) const {
+                    return _arguments[i + 1] - _arguments[i];
+                }
+
+                auto steps() const {
+                    return _coefficients.steps();
+                }
+
+                auto construct_kvector() const {
+                    return utils::constructor<KVector>::construct(
+                        utils::arguments(_parameters.size(), 
+                                        utils::constructor<KSubVector>::construct(
+                                            utils::arguments(_coefficients.steps()), 
+                                            utils::no_arguments())),
+                        utils::arguments(_parameters.size()),
+                        utils::no_arguments()
+                    );
                 }
 
             private:
@@ -315,6 +396,13 @@ namespace ssh {
         class lazy_runge_kutta_uniform_p {
 
             public:
+
+                using value_t = Value;
+                using function_t = Function;
+                using coefficients_t = Coeffs;
+                using kvector_t = KVector;
+                using arguments_t = types::vector1d_t<Argument>;
+                using vvector_t = VVector;
 
                 lazy_runge_kutta_uniform_p() = delete;
                 ~lazy_runge_kutta_uniform_p() = default;
@@ -357,13 +445,7 @@ namespace ssh {
                 }
 
                 VVector operator()() {
-                    static auto k = utils::constructor<KVector>::construct(
-                        utils::arguments(_parameters.size(), 
-                                        utils::constructor<KSubVector>::construct(
-                                            utils::arguments(_coefficients.steps()), 
-                                            utils::no_arguments())),
-                        utils::arguments(_parameters.size()),
-                        utils::no_arguments());
+                    static auto k = construct_kvector();
                     return (*this)(k);
                 }
 
@@ -377,11 +459,38 @@ namespace ssh {
                 }
 
                 auto size() const {
-                    return _n;
+                    return _n - 1;
                 }
 
                 auto initial_value() const {
                     return _initial_value;
+                }
+
+                auto bounds() const {
+                    return std::make_pair(_left_argument, _right_argument);
+                }
+
+                auto arguments() const {
+                    return utils::create_mesh_step<types::vector1d_t<Argument>>(_left_argument, _right_argument, _n);
+                }
+
+                auto step(size_t i = 0) const {
+                    return _d;
+                }
+
+                auto steps() const {
+                    return _coefficients.steps();
+                }
+
+                auto construct_kvector() const {
+                    return utils::constructor<KVector>::construct(
+                        utils::arguments(_parameters.size(), 
+                                        utils::constructor<KSubVector>::construct(
+                                            utils::arguments(_coefficients.steps()), 
+                                            utils::no_arguments())),
+                        utils::arguments(_parameters.size()),
+                        utils::no_arguments()
+                    );
                 }
 
             private:

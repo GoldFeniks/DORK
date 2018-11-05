@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>
 #include <experimental/type_traits>
 
 namespace ssh {
@@ -31,19 +32,19 @@ namespace ssh {
         template<
             typename T1, typename T2, 
             template<typename, typename> typename Assigner, 
-            template<typename, typename> typename... Assginers>
+            template<typename, typename> typename... Assigners>
         struct choose_assigner {
 
             using type = std::conditional_t<Assigner<T1, T2>::can_assign, 
                                             Assigner<T1, T2>, 
-                                            typename choose_assigner<T1, T2, Assginers...>::type>;
+                                            typename choose_assigner<T1, T2, Assigners...>::type>;
 
         };
 
         template<typename T1, typename T2, template<typename, typename> typename Assigner>
         struct choose_assigner<T1, T2, Assigner> {
 
-            using type = std::enable_if_t<Assigner<T1, T2>::can_assign, Assigner<T1, T2>>;
+            using type = std::conditional_t<Assigner<T1, T2>::can_assign, Assigner<T1, T2>, void>;
 
         };
 
