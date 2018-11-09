@@ -3,7 +3,7 @@
 #include <vector>
 #include <array>
 
-namespace ssh {
+namespace dork {
 
     namespace types {
 
@@ -21,4 +21,4 @@ namespace ssh {
 
     }
 
-}// namespace ssh
+}// namespace dork

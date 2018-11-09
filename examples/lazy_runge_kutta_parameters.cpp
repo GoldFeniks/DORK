@@ -2,13 +2,14 @@
 #include <vector>
 #include <fstream>
 #include "../include/runge_kutta/runge_kutta.hpp"
+#include "../include/runge_kutta/coefficients.hpp"
 
 //Solving initial value problem y' = f(x, y, params), y(a, params) = y0
 //where params are some set of independent variables
 
 int main() {
     //First create runge kutta method using some coefficients
-    const auto method = ssh::runge_kutta(ssh::runge_kutta_coefficients<double, 4>());
+    const auto method = dork::runge_kutta(dork::runge_kutta_coefficients<double, 4>());
 
     //Computational area
     const double a = 0;

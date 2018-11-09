@@ -4,11 +4,10 @@
 #include <type_traits>
 #include <utility>
 #include "../utils/constructor.hpp"
-#include "coefficients.hpp"
 #include "../utils/utils.hpp"
 #include "../utils/assigner.hpp"
 
-namespace ssh {
+namespace dork {
 
     namespace {
 
@@ -685,4 +684,4 @@ namespace ssh {
 
     };
 
-}// namespace ssh
+}// namespace dork

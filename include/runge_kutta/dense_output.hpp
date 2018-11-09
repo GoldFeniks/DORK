@@ -7,7 +7,7 @@
 #include "../utils/types.hpp"
 #include "../utils/constructor.hpp"
 
-namespace ssh {
+namespace dork {
 
     namespace implementation {
 
@@ -338,4 +338,4 @@ namespace ssh {
 
     using dense_output = dense_output_derivative<0>;
 
-}// namespace ssh
+}// namespace dork

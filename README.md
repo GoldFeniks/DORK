@@ -1,2 +1,2 @@
-# SSH
-Stuff Solver Helper
+# DORK
+Dense Output for Runge Kutta

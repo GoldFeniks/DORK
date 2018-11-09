@@ -4,7 +4,7 @@
 #include "../utils/utils.hpp"
 #include <functional>
 
-namespace ssh {
+namespace dork {
 
     template<typename Vector2, typename T, typename V = T>
     class dense_output_coefficients {
@@ -124,4 +124,4 @@ namespace ssh {
 
     };
 
-}// namespace ssh
+}// namespace dork

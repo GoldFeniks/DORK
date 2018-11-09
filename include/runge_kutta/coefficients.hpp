@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <numeric>
 
-namespace ssh {
+namespace dork {
 
     template<typename Vector2, typename Vector, typename Value = typename Vector::value_type, typename Index = size_t>
     class coefficients {
@@ -141,4 +141,4 @@ namespace ssh {
 
     };
 
-}// namespace ssh
+}// namespace dork
