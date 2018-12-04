@@ -8,7 +8,7 @@
 
 int main() {
     //First create runge kutta method using some coefficients
-    const auto method = dork::runge_kutta(dork::runge_kutta_coefficients<double, 4>());
+    const auto method = dork::runge_kutta::new_method(dork::runge_kutta_coefficients<double, 4>());
 
     //Computational area
     const double a = 0;

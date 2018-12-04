@@ -44,7 +44,8 @@ namespace dork {
             typename Value, 
             typename Function, 
             typename Coeffs,
-            bool StoreRef = false, 
+            bool StoreRef = false,
+            bool ODE = true,
             typename KVector = types::vector1d_t<Value>>
         class lazy_runge_kutta {
 
@@ -86,7 +87,7 @@ namespace dork {
                         buff += _coefficients.get_a(i, j) * k[j];
                     result += _coefficients.get_b(i) * (k[i] = _function(arg + d * _coefficients.get_c(i), _last_value + buff * d));
                 }
-                return _last_value += result * d;
+                return ODE ? _last_value += result * d : result * d;
             }
 
             Value operator()() {
@@ -151,6 +152,7 @@ namespace dork {
             typename Function, 
             typename Coeffs, 
             bool StoreRef = false,
+            bool ODE = true,
             typename Value = Argument, 
             typename KVector = types::vector1d_t<Value>>
         class lazy_runge_kutta_uniform {
@@ -194,7 +196,7 @@ namespace dork {
                             (k[i] = _function(_last_argument + _d * _coefficients.get_c(i), _last_value + buff * _d));
                 }
                 _last_argument += _d;
-                return _last_value += result * _d;
+                return ODE ? _last_value += result * _d : result * _d;
             }
 
             Value operator()() {
@@ -261,6 +263,7 @@ namespace dork {
             typename Function, 
             typename Coeffs, 
             bool StoreRef = false,
+            bool ODE = true,
             typename Argument = typename AVector::value_type, 
             typename Value = typename VVector::value_type,
             typename KVector = types::vector2d_t<Value>,
@@ -302,6 +305,8 @@ namespace dork {
                     const auto arg = _arguments[_arg_index++];
                     const auto d = _arguments[_arg_index] - arg;
                     for (size_t i = 0; i < _parameters.size(); ++i) {
+                        if (!ODE)
+                            _last_value[i] = Value(0);
                         auto result = Value(0);
                         for (size_t j = 0; j < _coefficients.steps(); ++j) {
                             auto buff = Value(0);
@@ -386,6 +391,7 @@ namespace dork {
             typename Function, 
             typename Coeffs, 
             bool StoreRef = false,
+            bool ODE = true,
             typename VVector = types::vector1d_t<Argument>, 
             typename Value = typename VVector::value_type,
             typename KVector = types::vector2d_t<Value>,
@@ -429,6 +435,8 @@ namespace dork {
                     if (!*this)
                         return _last_value;
                     for (size_t i = 0; i < _parameters.size(); ++i) {
+                        if (!ODE)
+                            _last_value[i] = Value(0);
                         auto result = Value(0);
                         for (size_t j = 0; j < _coefficients.steps(); ++j) {
                             auto buff = Value(0);
@@ -512,176 +520,198 @@ namespace dork {
         
     }// namespace implementation
 
-    template<typename Coeffs, typename Argument = typename Coeffs::value_type, typename Value = Argument>
-    class runge_kutta {
+    template<bool ODE>
+    class runge_kutta_wrapper {
 
         public:
 
-            runge_kutta() : _coefficients(Coeffs()) {}
-            runge_kutta(const Coeffs& coefficients) : _coefficients(coefficients) {}
+            runge_kutta_wrapper() = delete;
 
-            template<typename Function, typename Vector = types::vector1d_t<Argument>, typename KVector = types::vector1d_t<Value>>
-            auto create_lazy(const Vector& arguments, const Value& initial_value, const Function& function) const {
-                return implementation::
-                    lazy_runge_kutta<Vector, Value, Function, Coeffs, false, KVector>(arguments, initial_value, function, _coefficients);
+            template<typename Coeffs, typename Argument = typename Coeffs::value_type, typename Value = Argument>
+            static auto new_method(const Coeffs& coefficients) {
+                return runge_kutta_method<Coeffs, Argument, Value>(coefficients);
             }
 
-            template<typename Function, typename KVector = types::vector1d_t<Value>>
-            auto create_lazy_uniform(const Argument& a, const Argument& b, size_t n, const Value& initial_value, const Function& function) const {
-                return implementation::
-                    lazy_runge_kutta_uniform<Argument, Function, Coeffs, false, Value, KVector>(a, b, n, initial_value, function, _coefficients);
+            template<typename Coeffs, typename Argument = typename Coeffs::value_type, typename Value = Argument>
+            static auto new_method() {
+                return runge_kutta_method<Coeffs, Argument, Value>();
             }
 
-            template<typename Function, typename Vector = types::vector1d_t<Argument>, typename KVector = types::vector1d_t<Value>>
-            auto create_lazy_bound(const Vector& arguments, const Value& initial_value, const Function& function) const {
-                return implementation::
-                    lazy_runge_kutta<Vector, Value, Function, Coeffs, true, KVector>(arguments, initial_value, function, _coefficients);
-            }
+            template<typename Coeffs, typename Argument = typename Coeffs::value_type, typename Value = Argument>
+            class runge_kutta_method {
 
-            template<typename Function, typename KVector = types::vector1d_t<Value>>
-            auto create_lazy_uniform_bound(const Argument& a, const Argument& b, size_t n, const Value& initial_value, const Function& function) const {
-                return implementation::
-                    lazy_runge_kutta_uniform<Argument, Function, Coeffs, true, Value, KVector>(a, b, n, initial_value, function, _coefficients);
-            }
+                public:
 
-            template<
-                typename Function, 
-                typename Vector = types::vector1d_t<Argument>, 
-                typename RVector = types::vector1d_t<Value>, 
-                typename KVector = types::vector1d_t<Value>>
-            auto solve(const Vector& arguments, const Value& initial_value, const Function& function) const {
-                return solver<RVector>::solve(create_lazy_bound<Function, Vector, KVector>(arguments, initial_value, function));
-            }
+                    runge_kutta_method() : _coefficients(Coeffs()) {}
+                    runge_kutta_method(const Coeffs& coefficients) : _coefficients(coefficients) {}
 
-            template<
-                typename Function, 
-                typename RVector = types::vector1d_t<Value>, 
-                typename KVector = types::vector1d_t<Value>>
-            auto solve_uniform(const Argument& a, const Argument& b, const size_t n, const Value& initial_value, const Function& function) const {
-                return solver<RVector>::solve(create_lazy_uniform_bound<Function, KVector>(a, b, n, initial_value, function));
-            }
+                    template<typename Function, typename Vector = types::vector1d_t<Argument>, typename KVector = types::vector1d_t<Value>>
+                    auto create_lazy(const Vector& arguments, const Value& initial_value, const Function& function) const {
+                        return implementation::
+                            lazy_runge_kutta<Vector, Value, Function, Coeffs, false, ODE, KVector>(arguments, initial_value, function, _coefficients);
+                    }
 
-            template<
-                typename Function,
-                typename KVector = types::vector2d_t<Value>,
-                typename AVector = types::vector1d_t<Argument>,
-                typename VVector = types::vector1d_t<Value>,
-                template<typename> typename PVector = types::vector1d_t, 
-                typename KSubVector = typename KVector::value_type,
-                typename... Parameters>
-            auto create_lazy_p(const AVector& arguments, const VVector& initial_value, const Function& function,
-                               const PVector<std::tuple<Parameters...>>& parameters) const
-            {
-                return implementation::
-                    lazy_runge_kutta_p<AVector, VVector, Function, Coeffs, false, Argument, Value, KVector, PVector, KSubVector, Parameters...>
-                        (arguments, initial_value, function, parameters, _coefficients);
-            }
+                    template<typename Function, typename KVector = types::vector1d_t<Value>>
+                    auto create_lazy_uniform(const Argument& a, const Argument& b, size_t n, const Value& initial_value, const Function& function) const {
+                        return implementation::
+                            lazy_runge_kutta_uniform<Argument, Function, Coeffs, false, ODE, Value, KVector>(a, b, n, initial_value, function, _coefficients);
+                    }
 
-            template<
-                typename Function,
-                typename KVector = types::vector2d_t<Value>,
-                typename AVector = types::vector1d_t<Argument>,
-                typename VVector = types::vector1d_t<Value>,
-                template<typename> typename PVector = types::vector1d_t, 
-                typename KSubVector = typename KVector::value_type,
-                typename... Parameters>
-            auto create_lazy_bound_p(const AVector& arguments, const VVector& initial_value, const Function& function,
-                               const PVector<std::tuple<Parameters...>>& parameters) const
-            {
-                return implementation::
-                    lazy_runge_kutta_p<AVector, VVector, Function, Coeffs, true, Argument, Value, KVector, PVector, KSubVector, Parameters...>
-                        (arguments, initial_value, function, parameters, _coefficients);
-            }
+                    template<typename Function, typename Vector = types::vector1d_t<Argument>, typename KVector = types::vector1d_t<Value>>
+                    auto create_lazy_bound(const Vector& arguments, const Value& initial_value, const Function& function) const {
+                        return implementation::
+                            lazy_runge_kutta<Vector, Value, Function, Coeffs, true, ODE, KVector>(arguments, initial_value, function, _coefficients);
+                    }
 
-            template<
-                typename Function,
-                typename KVector = types::vector2d_t<Value>,
-                typename VVector = types::vector1d_t<Argument>, 
-                template<typename> typename PVector = types::vector1d_t, 
-                typename KSubVector = typename KVector::value_type,
-                typename... Parameters>
-            auto create_lazy_uniform_p(const Argument& a, const Argument& b, const size_t n, const VVector& initial_value,
-                                       const Function& function, const PVector<std::tuple<Parameters...>>& parameters) const
-            {
-                return implementation::
-                    lazy_runge_kutta_uniform_p<Argument, Function, Coeffs, false, VVector, Value, KVector, PVector, KSubVector, Parameters...>
-                        (a, b, n, initial_value, function, parameters, _coefficients); 
-            }
+                    template<typename Function, typename KVector = types::vector1d_t<Value>>
+                    auto create_lazy_uniform_bound(const Argument& a, const Argument& b, size_t n, const Value& initial_value, const Function& function) const {
+                        return implementation::
+                            lazy_runge_kutta_uniform<Argument, Function, Coeffs, true, ODE, Value, KVector>(a, b, n, initial_value, function, _coefficients);
+                    }
 
-            template<
-                typename Function,
-                typename KVector = types::vector2d_t<Value>,
-                typename VVector = types::vector1d_t<Argument>, 
-                template<typename> typename PVector = types::vector1d_t, 
-                typename KSubVector = typename KVector::value_type,
-                typename... Parameters>
-            auto create_lazy_uniform_bound_p(const Argument& a, const Argument& b, const size_t n, const VVector& initial_value,
-                                             const Function& function, const PVector<std::tuple<Parameters...>>& parameters) const
-            {
-                return implementation::
-                    lazy_runge_kutta_uniform_p<Argument, Function, Coeffs, true, VVector, Value, KVector, PVector, KSubVector, Parameters...>
-                        (a, b, n, initial_value, function, parameters, _coefficients); 
-            }
+                    template<
+                        typename Function, 
+                        typename Vector = types::vector1d_t<Argument>, 
+                        typename RVector = types::vector1d_t<Value>, 
+                        typename KVector = types::vector1d_t<Value>>
+                    auto solve(const Vector& arguments, const Value& initial_value, const Function& function) const {
+                        return solver<RVector>::solve(create_lazy_bound<Function, Vector, KVector>(arguments, initial_value, function));
+                    }
 
-            template<
-                typename Function,
-                typename RVector = types::vector2d_t<Value>,
-                typename KVector = types::vector2d_t<Value>,
-                typename AVector = types::vector1d_t<Argument>,
-                typename VVector = types::vector1d_t<Value>,
-                template<typename> typename PVector = types::vector1d_t, 
-                typename KSubVector = typename KVector::value_type,
-                typename... Parameters>
-            auto solve_p(const AVector& arguments, const VVector& initial_value, const Function& function,
-                         const PVector<std::tuple<Parameters...>>& parameters) const 
-            {
-                return solver<RVector>::solve(
-                    create_lazy_bound_p<Function, KVector, AVector, VVector, PVector, KSubVector, Parameters...>(
-                        arguments, initial_value, function, parameters
-                    )
-                );
-            }
+                    template<
+                        typename Function, 
+                        typename RVector = types::vector1d_t<Value>, 
+                        typename KVector = types::vector1d_t<Value>>
+                    auto solve_uniform(const Argument& a, const Argument& b, const size_t n, const Value& initial_value, const Function& function) const {
+                        return solver<RVector>::solve(create_lazy_uniform_bound<Function, KVector>(a, b, n, initial_value, function));
+                    }
 
-            template<
-                typename Function,
-                typename RVector = types::vector2d_t<Value>,
-                typename KVector = types::vector2d_t<Value>,
-                typename VVector = types::vector1d_t<Argument>, 
-                template<typename> typename PVector = types::vector1d_t, 
-                typename KSubVector = typename KVector::value_type,
-                typename... Parameters>
-            auto solve_uniform_p(const Argument& a, const Argument& b, const size_t n, const VVector& initial_value,
-                                 const Function& function, const PVector<std::tuple<Parameters...>>& parameters) const 
-            {
-                return solver<RVector>::solve(
-                    create_lazy_uniform_bound_p<Function, KVector, VVector, PVector, KSubVector, Parameters...>(
-                        a, b, n, initial_value, function, parameters
-                    )
-                );
-            }
+                    template<
+                        typename Function,
+                        typename KVector = types::vector2d_t<Value>,
+                        typename AVector = types::vector1d_t<Argument>,
+                        typename VVector = types::vector1d_t<Value>,
+                        template<typename> typename PVector = types::vector1d_t, 
+                        typename KSubVector = typename KVector::value_type,
+                        typename... Parameters>
+                    auto create_lazy_p(const AVector& arguments, const VVector& initial_value, const Function& function,
+                                    const PVector<std::tuple<Parameters...>>& parameters) const
+                    {
+                        return implementation::
+                            lazy_runge_kutta_p<AVector, VVector, Function, Coeffs, false, ODE, Argument, Value, KVector, PVector, KSubVector, Parameters...>
+                                (arguments, initial_value, function, parameters, _coefficients);
+                    }
 
-        private:
+                    template<
+                        typename Function,
+                        typename KVector = types::vector2d_t<Value>,
+                        typename AVector = types::vector1d_t<Argument>,
+                        typename VVector = types::vector1d_t<Value>,
+                        template<typename> typename PVector = types::vector1d_t, 
+                        typename KSubVector = typename KVector::value_type,
+                        typename... Parameters>
+                    auto create_lazy_bound_p(const AVector& arguments, const VVector& initial_value, const Function& function,
+                                    const PVector<std::tuple<Parameters...>>& parameters) const
+                    {
+                        return implementation::
+                            lazy_runge_kutta_p<AVector, VVector, Function, Coeffs, true, ODE, Argument, Value, KVector, PVector, KSubVector, Parameters...>
+                                (arguments, initial_value, function, parameters, _coefficients);
+                    }
 
-            const Coeffs _coefficients;
+                    template<
+                        typename Function,
+                        typename KVector = types::vector2d_t<Value>,
+                        typename VVector = types::vector1d_t<Argument>, 
+                        template<typename> typename PVector = types::vector1d_t, 
+                        typename KSubVector = typename KVector::value_type,
+                        typename... Parameters>
+                    auto create_lazy_uniform_p(const Argument& a, const Argument& b, const size_t n, const VVector& initial_value,
+                                            const Function& function, const PVector<std::tuple<Parameters...>>& parameters) const
+                    {
+                        return implementation::
+                            lazy_runge_kutta_uniform_p<Argument, Function, Coeffs, false, ODE, VVector, Value, KVector, PVector, KSubVector, Parameters...>
+                                (a, b, n, initial_value, function, parameters, _coefficients); 
+                    }
+
+                    template<
+                        typename Function,
+                        typename KVector = types::vector2d_t<Value>,
+                        typename VVector = types::vector1d_t<Argument>, 
+                        template<typename> typename PVector = types::vector1d_t, 
+                        typename KSubVector = typename KVector::value_type,
+                        typename... Parameters>
+                    auto create_lazy_uniform_bound_p(const Argument& a, const Argument& b, const size_t n, const VVector& initial_value,
+                                                    const Function& function, const PVector<std::tuple<Parameters...>>& parameters) const
+                    {
+                        return implementation::
+                            lazy_runge_kutta_uniform_p<Argument, Function, Coeffs, true, ODE, VVector, Value, KVector, PVector, KSubVector, Parameters...>
+                                (a, b, n, initial_value, function, parameters, _coefficients); 
+                    }
+
+                    template<
+                        typename Function,
+                        typename RVector = types::vector2d_t<Value>,
+                        typename KVector = types::vector2d_t<Value>,
+                        typename AVector = types::vector1d_t<Argument>,
+                        typename VVector = types::vector1d_t<Value>,
+                        template<typename> typename PVector = types::vector1d_t, 
+                        typename KSubVector = typename KVector::value_type,
+                        typename... Parameters>
+                    auto solve_p(const AVector& arguments, const VVector& initial_value, const Function& function,
+                                const PVector<std::tuple<Parameters...>>& parameters) const 
+                    {
+                        return solver<RVector>::solve(
+                            create_lazy_bound_p<Function, KVector, AVector, VVector, PVector, KSubVector, Parameters...>(
+                                arguments, initial_value, function, parameters
+                            )
+                        );
+                    }
+
+                    template<
+                        typename Function,
+                        typename RVector = types::vector2d_t<Value>,
+                        typename KVector = types::vector2d_t<Value>,
+                        typename VVector = types::vector1d_t<Argument>, 
+                        template<typename> typename PVector = types::vector1d_t, 
+                        typename KSubVector = typename KVector::value_type,
+                        typename... Parameters>
+                    auto solve_uniform_p(const Argument& a, const Argument& b, const size_t n, const VVector& initial_value,
+                                        const Function& function, const PVector<std::tuple<Parameters...>>& parameters) const 
+                    {
+                        return solver<RVector>::solve(
+                            create_lazy_uniform_bound_p<Function, KVector, VVector, PVector, KSubVector, Parameters...>(
+                                a, b, n, initial_value, function, parameters
+                            )
+                        );
+                    }
+
+                private:
+
+                    const Coeffs _coefficients;
 
 
-            template<typename RVector>
-            struct solver {
+                    template<typename RVector>
+                    struct solver {
 
-                template<typename RK>
-                static auto solve(RK&& rk) {
-                    auto result = utils::constructor<RVector>::construct(
-                        utils::arguments(rk.size()),
-                        utils::no_arguments()
-                    );
-                    utils::default_assign(result[0], rk.initial_value());
-                    for (size_t i = 1; i < rk.size(); ++i)
-                        utils::default_assign(result[i], rk());
-                    return result;
-                }
+                        template<typename RK>
+                        static auto solve(RK&& rk) {
+                            auto result = utils::constructor<RVector>::construct(
+                                utils::arguments(rk.size()),
+                                utils::no_arguments()
+                            );
+                            utils::default_assign(result[0], rk.initial_value());
+                            for (size_t i = 1; i < rk.size(); ++i)
+                                utils::default_assign(result[i], rk());
+                            return result;
+                        }
+
+                    };
 
             };
 
     };
+
+    using runge_kutta = runge_kutta_wrapper<true>;
+    using runge_kutta_integral = runge_kutta_wrapper<false>;
 
 }// namespace dork
