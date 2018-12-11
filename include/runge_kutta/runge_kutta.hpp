@@ -311,9 +311,9 @@ namespace dork {
                         for (size_t j = 0; j < _coefficients.steps(); ++j) {
                             auto buff = Value(0);
                             for (size_t m = 0; m < j; ++m)
-                                buff += _coefficients.get_a(j, m) * k[i][m];
+                                buff += _coefficients.get_a(j, m) * k[m][i];
                             result += _coefficients.get_b(j) * (
-                                k[i][j] = _caller(arg + d * _coefficients.get_c(j), _last_value[i] + buff * d, _parameters[i]));
+                                k[j][i] = _caller(arg + d * _coefficients.get_c(j), _last_value[i] + buff * d, _parameters[i]));
                         }
                         _last_value[i] += result * d;
                     }
@@ -360,9 +360,9 @@ namespace dork {
 
                 auto construct_kvector() const {
                     return utils::constructor<KVector>::construct(
-                        utils::arguments(_parameters.size(), 
+                        utils::arguments(steps(), 
                                         utils::constructor<KSubVector>::construct(
-                                            utils::arguments(_coefficients.steps()), 
+                                            utils::arguments(_parameters.size()), 
                                             utils::no_arguments())),
                         utils::arguments(_parameters.size()),
                         utils::no_arguments()
@@ -441,9 +441,9 @@ namespace dork {
                         for (size_t j = 0; j < _coefficients.steps(); ++j) {
                             auto buff = Value(0);
                             for (size_t m = 0; m < j; ++m)
-                                buff += _coefficients.get_a(j, m) * k[i][m];
+                                buff += _coefficients.get_a(j, m) * k[m][i];
                             result += _coefficients.get_b(j) * (
-                                k[i][j] = _caller(_last_argument + _d * _coefficients.get_c(j), _last_value[i] + buff * _d, _parameters[i]));
+                                k[j][i] = _caller(_last_argument + _d * _coefficients.get_c(j), _last_value[i] + buff * _d, _parameters[i]));
                         }
                         _last_value[i] += result * _d;
                     }
@@ -491,9 +491,9 @@ namespace dork {
 
                 auto construct_kvector() const {
                     return utils::constructor<KVector>::construct(
-                        utils::arguments(_parameters.size(), 
+                        utils::arguments(steps(), 
                                         utils::constructor<KSubVector>::construct(
-                                            utils::arguments(_coefficients.steps()), 
+                                            utils::arguments(_parameters.size()), 
                                             utils::no_arguments())),
                         utils::arguments(_parameters.size()),
                         utils::no_arguments()

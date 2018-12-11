@@ -58,7 +58,7 @@ namespace dork {
                         );
                         for (size_t i = 0; i < y.size(); ++i) {
                             for (size_t j = 0; j < functions.size(); ++j)
-                                result[i] += functions[j](x) * k[i][j];
+                                result[i] += functions[j](x) * k[j][i];
                             result[i] = (N == 0 ? y[i] : Value(0)) + h * result[i];
                         }
                         return result;
@@ -93,9 +93,9 @@ namespace dork {
                             utils::arguments(y.size()),
                             utils::no_arguments()
                         );
-                        for (size_t i = 0; i < k.size(); ++i) {
+                        for (size_t i = 0; i < y.size(); ++i) {
                             for (size_t j = 0; j < functions.size(); ++j)
-                                result[i] += functions[j](x) * k[i][j];
+                                result[i] += functions[j](x) * k[j][i];
                             result[i] = (N == 0 ? y[i] : Value(0)) + h * result[i];
                         }
                         return result;
