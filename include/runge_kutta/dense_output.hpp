@@ -29,7 +29,7 @@ namespace dork {
                 dense_output_implementation(const Functions& functions) : _functions(functions) {}
 
                 template<typename Vector = types::vector1d_t<Value>>
-                auto interpolate(const Argument& h, const Vector& k) {
+                auto interpolate(const Argument& h, const Vector& k) const {
                     return interpolate<Vector>(h, k, k[0]);
                 }
 
@@ -52,11 +52,11 @@ namespace dork {
                 auto interpolate_p(const Argument& h, const KVector& k, const RVector& y) const {
                     return [functions=_functions, h, k, y](const Argument& x) {
                         auto result = utils::constructor<RVector>::construct(
-                            utils::arguments(y.size(), Value(0)),
                             utils::arguments(y.size()),
                             utils::no_arguments()
                         );
                         for (size_t i = 0; i < y.size(); ++i) {
+                            result[i] = Value(0);
                             for (size_t j = 0; j < functions.size(); ++j)
                                 result[i] += functions[j](x) * k[j][i];
                             result[i] = (N == 0 ? y[i] : Value(0)) + h * result[i];
@@ -66,12 +66,12 @@ namespace dork {
                 }
 
                 template<typename KVector = types::vector2d_t<Value>>
-                auto interpolate_bound(const Argument& h, const KVector& k) {
+                auto interpolate_bound(const Argument& h, const KVector& k) const {
                     return interpolate_bound<KVector>(h, k, k[0]);
                 }
 
                 template<typename KVector = types::vector2d_t<Value>>
-                auto interpolate_bound(const Argument& h, const KVector& k, const Value& y) {
+                auto interpolate_bound(const Argument& h, const KVector& k, const Value& y) const {
                     return [functions=_functions, &h, &k, &y](const Argument& x) {
                         auto result = Value(0);
                         for (size_t i = 0; i < k.size(); ++i)
@@ -81,19 +81,19 @@ namespace dork {
                 }
 
                 template<typename KVector = types::vector2d_t<Value>, typename RVector = typename KVector::value_type>
-                auto interpolate_bound_p(const Argument& h, const KVector& k) {
+                auto interpolate_bound_p(const Argument& h, const KVector& k) const {
                     return interpolate_bound_p<KVector, RVector>(h, k, k[0]);
                 }
 
                 template<typename KVector = types::vector2d_t<Value>, typename RVector = types::vector1d_t<Value>>
-                auto interpolate_bound_p(const Argument& h, const KVector& k, const RVector& y) {
+                auto interpolate_bound_p(const Argument& h, const KVector& k, const RVector& y) const {
                     return [functions=_functions, &h, &k, &y](const Argument& x) {
                         auto result = utils::constructor<RVector>::construct(
-                            utils::arguments(y.size(), Value(0)),
                             utils::arguments(y.size()),
                             utils::no_arguments()
                         );
                         for (size_t i = 0; i < y.size(); ++i) {
+                            result[i] = Value(0);
                             for (size_t j = 0; j < functions.size(); ++j)
                                 result[i] += functions[j](x) * k[j][i];
                             result[i] = (N == 0 ? y[i] : Value(0)) + h * result[i];

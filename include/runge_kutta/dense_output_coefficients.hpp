@@ -64,11 +64,8 @@ namespace dork {
 
     };
 
-    template<typename T, size_t N>
-    class runge_kutta_dense_output_coefficients {};
-
-    template<typename T>
-    class runge_kutta_dense_output_coefficients<T, 3> : public dense_output_coefficients<std::array<std::array<T, 3>, 4>, T> {
+    template<typename T, typename V = T>
+    class runge_kutta_dense_output_coefficients : public dense_output_coefficients<std::array<std::array<T, 3>, 4>, T, V> {
 
     public:
 
@@ -80,12 +77,12 @@ namespace dork {
             T(0), -T(1) / T(2),  T(2) / T(3)
         };
 
-        runge_kutta_dense_output_coefficients() : dense_output_coefficients<std::array<std::array<T, 3>, 4>, T>(coefficients) {}
+        runge_kutta_dense_output_coefficients() : dense_output_coefficients<std::array<std::array<T, 3>, 4>, T, V>(coefficients) {}
 
     };
 
-    template<typename T>
-    class dormand_prince_dense_output_coefficients1 : public dense_output_coefficients<std::array<std::array<T, 5>, 7>, T> {
+    template<typename T, typename V = T>
+    class dormand_prince_dense_output_coefficients1 : public dense_output_coefficients<std::array<std::array<T, 5>, 7>, T, V> {
 
     public:
 
@@ -100,12 +97,12 @@ namespace dork {
             T(0),  T(44764047) / T(29380423),        -T(1532549) / T(353981),       T(90730570) / T(29380423),         -T(8293050) / T(29380423)
         };
 
-        dormand_prince_dense_output_coefficients1() : dense_output_coefficients<std::array<std::array<T, 5>, 7>, T>(coefficients) {}
+        dormand_prince_dense_output_coefficients1() : dense_output_coefficients<std::array<std::array<T, 5>, 7>, T, V>(coefficients) {}
 
     };
 
-    template<typename T>
-    class dormand_prince_dense_output_coefficients2 : public dense_output_coefficients<std::array<std::array<T, 5>, 7>, T> {
+    template<typename T, typename V = T>
+    class dormand_prince_dense_output_coefficients2 : public dense_output_coefficients<std::array<std::array<T, 5>, 7>, T, V> {
 
     public:
 
@@ -120,7 +117,7 @@ namespace dork {
                 T(0),  T(44764047) / T(29380423),            -T(1532549) / T(353981),            T(90730570) / T(29380423),         -T(8293050) / T(29380423)
         };
 
-        dormand_prince_dense_output_coefficients2() : dense_output_coefficients<std::array<std::array<T, 5>, 7>, T>(coefficients) {}
+        dormand_prince_dense_output_coefficients2() : dense_output_coefficients<std::array<std::array<T, 5>, 7>, T, V>(coefficients) {}
 
     };
 
