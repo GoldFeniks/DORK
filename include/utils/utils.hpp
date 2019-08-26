@@ -1,63 +1,144 @@
 #pragma once
 
+#include <tuple>
+#include <vector>
 #include <cstddef>
 #include <functional>
-#include <vector>
 #include <type_traits>
-#include <tuple>
 #include "types.hpp"
-#include "assigner.hpp"
 
 namespace dork {
 
     namespace utils {
 
-        /**
-         * Initializes vector values at indexes in range [start, last) by calling func(index)
-         */
-        template<typename Vector, typename Function, typename Index = size_t>
-        void init_vector(Vector& vector, Index first, Index last, const Function& function) {
-            for (Index i = first; i < last; ++i)
-                default_assign(vector[i], function(i));
-        }
+        template<typename...>
+        struct collect_types { collect_types() = delete; };
 
-        /**
-         * Initializes vector values at indexes in range [0, last) by calling func(index)
-         */
-        template<typename Vector, typename Function, typename Index = size_t>
-        void init_vector(Vector& vector, Index last, const Function& function) {
-            init_vector<Vector, Function, Index>(vector, Index(0), last, function);
-        }
+        template<typename T, typename... V>
+        struct collect_types<T, V...> {
 
-        /**
-         * Initializes vector values at indexes in range [0, vector.size()) by calling func(index)
-         */
-        template<typename Vector, typename Function>
-        void init_vector(Vector& vector, const Function& function) {
-            init_vector(vector, vector.size(), function);
-        }
+            collect_types() = delete;
 
-        /**
-         * Creates Vector { a, a + d, a + 2 * d, ... , a + (n - 1) * d }
-         */
-        template<typename Value, typename Vector = types::vector1d_t<Value>, typename Index = size_t>
-        Vector create_mesh_step(const Value& a, const Value& d, const Index n) {
-            Vector result(n);
-            init_vector(result, [a,d](Index i) { return a + i * d; });
-            return result;
-        }
+            using type = typename collect_types<T, typename collect_types<V...>::type>::type;
 
-        /**
-         * Creates Vector { a, a + d, a + 2 * d, ... , a + (n - 1) * d }, where d = (b - a) / (n - 1)
-         */
-        template<typename Value, typename Vector = types::vector1d_t<Value>, typename Index = size_t>
-        Vector create_mesh_bounds(const Value& a, const Value& b, const Index n) {
-            return create_mesh_step<Vector>(a, (b - a) / (n - 1), n);
-        }
+        };
 
-        template<typename T, typename I = size_t>
-        T factorial(const I n) {
-            return n <= I(1) ? T(1) : factorial<T>(n - I(1)) * T(n);
+        template<typename... T, typename... V>
+        struct collect_types<std::tuple<T...>, V...> {
+
+            collect_types() = delete;
+
+            using type = typename collect_types<std::tuple<T...>, typename collect_types<V...>::type>::type;
+
+        };
+
+        template<typename... T, typename... V>
+        struct collect_types<std::tuple<T...>, std::tuple<V...>> {
+
+            collect_types() = delete;
+
+            using type = std::tuple<T..., V...>;
+
+        };
+
+        template<typename T, typename... V>
+        struct collect_types<T, std::tuple<V...>> {
+
+            collect_types() = delete;
+
+            using type = std::tuple<T, V...>;
+
+        };
+
+        template<typename... T>
+        struct collect_types<std::tuple<T...>> {
+
+            collect_types() = delete;
+
+            using type = std::tuple<T...>;
+
+        };
+
+        template<typename T>
+        struct collect_types<T> {
+
+            collect_types() = delete;
+
+            using type = std::tuple<T>;
+
+        };
+
+        template<typename... T>
+        using collect_types_t = typename collect_types<T...>::type;
+
+        template<typename... T>
+        struct const_reference_tuple;
+
+        template<typename T, typename... V>
+        struct const_reference_tuple<T, V...> {
+
+            const_reference_tuple() = delete;
+
+            using type = collect_types_t<const T&, typename const_reference_tuple<V...>::type>;
+
+            static type construct(const T& value, const V&... values) {
+                return std::tuple_cat(std::tuple<const T&>(value), const_reference_tuple<V...>::construct(values...));
+            }
+
+        };
+
+        template<typename... T, typename... V>
+        struct const_reference_tuple<std::tuple<T...>, V...> {
+
+            const_reference_tuple() = delete;
+
+            using type = collect_types_t<const T&..., typename const_reference_tuple<V...>::type>;
+
+            static type construct(const std::tuple<T...>& value, const V&... values) {
+                return std::tuple_cat(std::apply(
+                        [](auto&... values) {
+                            return std::tuple<const T&...>(values...);
+                        },
+                        value
+                    ),
+                    const_reference_tuple<V...>::construct(values...)
+                );
+            }
+
+        };
+
+        template<typename... T>
+        struct const_reference_tuple<std::tuple<T...>> {
+
+            const_reference_tuple() = delete;
+
+            using type = std::tuple<const T&...>;
+
+            static type construct(const std::tuple<T...>& value) {
+                return std::apply([](const auto&... values) { return std::tuple<const T&...>(values...); }, value);
+            }
+
+        };
+
+        template<typename T>
+        struct const_reference_tuple<T> {
+
+            const_reference_tuple() = delete;
+
+            using type = std::tuple<const T&>;
+
+            static type construct(const T& value) {
+                return std::tuple<const T&>(value);
+            }
+
+        };
+
+        template<typename... T>
+        using const_reference_tuple_t = typename const_reference_tuple<T...>::type;
+
+        template<typename... T>
+        auto make_const_reference_tuple(const T&... values) {
+            return const_reference_tuple<T...>::construct(values...);
         }
 
     }// namespace utils
