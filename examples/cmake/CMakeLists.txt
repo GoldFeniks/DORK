@@ -6,7 +6,7 @@ set(PROJECT_DIR ${PROJECT_SOURCE_DIR}/../../)
 
 include_directories(${PROJECT_DIR}/include)
 
-file(GLOB_RECURSE EXAMPLES "${PROJECT_DIR}/examples/*.cpp")
+file(GLOB EXAMPLES "${PROJECT_DIR}/examples/*.cpp")
 foreach(example ${EXAMPLES})
     get_filename_component(name ${example} NAME_WLE)
     add_executable(${name} ${example})
