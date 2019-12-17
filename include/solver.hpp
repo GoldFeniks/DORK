@@ -448,23 +448,23 @@ namespace dork {
 
             template<typename... V, typename... P>
             solver<B, F, std::tuple<V...>, std::tuple<P...>> initial_values(
-                    const types::vector1d_t<std::tuple<V...>>& values, const types::vector1d_t<std::tuple<P...>>& parameters) {
+                    const types::vector1d_t<std::tuple<V...>>& values, const types::vector1d_t<std::tuple<P...>>& parameters) const {
                 return solver<B, F, std::tuple<V...>, std::tuple<P...>>(_base, _functions, values, parameters);
             }
 
             template<typename... V>
-            solver<B, F, std::tuple<V...>, std::tuple<>> initial_values(const V&... values) {
+            solver<B, F, std::tuple<V...>, std::tuple<>> initial_values(const V&... values) const {
                 return solver<B, F, std::tuple<V...>, std::tuple<>>(_base, _functions, std::make_tuple(values...));
             }
 
             template<typename... V, typename... P>
             solver<B, F, std::tuple<V...>, std::tuple<P...>> operator()(
-                    const types::vector1d_t<std::tuple<V...>>& values, const types::vector1d_t<std::tuple<P...>>& parameters) {
+                    const types::vector1d_t<std::tuple<V...>>& values, const types::vector1d_t<std::tuple<P...>>& parameters) const {
                 return initial_values(values, parameters);
             }
 
             template<typename... V>
-            solver<B, F, std::tuple<V...>, std::tuple<>> operator()(const V&... values) {
+            solver<B, F, std::tuple<V...>, std::tuple<>> operator()(const V&... values) const {
                 return initial_values(values...);
             }
 
