@@ -705,6 +705,35 @@ namespace dork {
 
         };
 
+        template<typename T, size_t N, size_t Q = 0, size_t M = 0, size_t K = 0>
+        class endless_solver_base : public solver_base<endless_solver_base<T, N, Q, M, K>, T, N, Q, M, K> {
+
+        private:
+
+            using base_t = solver_base<endless_solver_base<T, N, Q, M, K>, T, N, Q, M, K>;
+
+        public:
+
+            using typename base_t::coefficients_t;
+
+            endless_solver_base(const T& x0, const T& h, const coefficients_t& coefficients)
+                    : base_t(x0, h, coefficients) {}
+
+            void next() {
+                _x += _h;
+            }
+
+            [[nodiscard]] bool is_done() const {
+                return false;
+            }
+
+        private:
+
+            using base_t::_x;
+            using base_t::_h;
+
+        };
+
     }// namespace implementation
 
     template<typename T, size_t N, size_t Q = 0, size_t M = 0, size_t K = 0>
@@ -758,6 +787,14 @@ namespace dork {
                     const T& fac_max = T(3) / T(2)
             ) {
                 return solver(x0, x1, h, atol, rtol, fac, fac_min, fac_max);
+            }
+
+            implementation::endless_solver_base<T, N, Q, M, K> solver(const T& x0, const T& h) {
+                return implementation::endless_solver_base<T, N, Q, M, K>(x0, h, _coefficients);
+            }
+
+            implementation::endless_solver_base<T, N, Q, M, K> operator()(const T& x0, const T& h) {
+                return solver(x0, h);
             }
 
         private:
