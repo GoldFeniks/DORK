@@ -656,7 +656,7 @@ namespace dork {
                 T error;
                 std::tie(error, _h) = _calc_step_error(y0.front(), y1.front(), y2.front());
                 for (size_t i = 1; i < y0.size(); ++i) {
-                    const auto& [err, h] = _calc_step_error(y0[i], y1[i], y2[i]);
+                    const auto [err, h] = _calc_step_error(y0[i], y1[i], y2[i]);
                     error = std::max(error, err);
                     _h = std::min(_h, h);
                 }
